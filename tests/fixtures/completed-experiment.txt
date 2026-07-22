@@ -1,0 +1,1 @@
+The cuff experiment completed. Signal stability improved, but motion artifacts remained.

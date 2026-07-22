@@ -1,0 +1,44 @@
+{
+  "name": "veinzflow",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Research operations system for the VeinzFlow team",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint . --max-warnings=0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "setup:notion": "tsx scripts/setup-notion.ts",
+    "telegram:register": "tsx scripts/register-telegram-webhook.ts",
+    "telegram:delete-webhook": "tsx scripts/delete-telegram-webhook.ts",
+    "env:verify": "tsx scripts/verify-environment.ts",
+    "seed:demo": "tsx scripts/seed-demo-data.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "latest",
+    "@notionhq/client": "latest",
+    "googleapis": "latest",
+    "next": "latest",
+    "openai": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "resend": "latest",
+    "zod": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "eslint": "latest",
+    "eslint-config-next": "latest",
+    "prettier": "latest",
+    "tsx": "latest",
+    "typescript": "latest",
+    "vitest": "^3.2.4"
+  }
+}

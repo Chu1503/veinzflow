@@ -1,0 +1,10 @@
+{
+  "update_id": 99,
+  "message": {
+    "message_id": 1,
+    "date": 0,
+    "chat": { "id": 55, "type": "private" },
+    "from": { "id": 999, "first_name": "Unknown" },
+    "text": "test"
+  }
+}
