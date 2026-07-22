@@ -11,4 +11,28 @@ describe("project update schema", () => {
       projectUpdateSchema.parse({ ...validProjectUpdate, confidence: 2 }),
     ).toThrow();
   });
+  it("allows blank contact details and only the streamlined statuses", () => {
+    const result = projectUpdateSchema.parse({
+      ...validProjectUpdate,
+      contacts: [
+        {
+          ...validProjectUpdate.contacts[0],
+          contactDetails: null,
+          contactStatus: null,
+        },
+      ],
+    });
+    expect(result.contacts[0]?.contactStatus).toBeNull();
+    expect(() =>
+      projectUpdateSchema.parse({
+        ...validProjectUpdate,
+        contacts: [
+          {
+            ...validProjectUpdate.contacts[0],
+            contactStatus: "Active Collaborator",
+          },
+        ],
+      }),
+    ).toThrow();
+  });
 });

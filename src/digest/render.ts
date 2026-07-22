@@ -3,13 +3,8 @@ import type { DigestInput, ProjectDigest } from "@/schemas/digest";
 const sections: Array<[keyof DigestInput, string]> = [
   ["logEntries", "What happened"],
   ["completedTasks", "Completed work"],
-  ["decisions", "Decisions"],
-  ["upcomingTasks", "Coming up"],
-  ["overdueTasks", "Overdue"],
-  ["blockedTasks", "Blocked"],
-  ["unassignedHighPriorityTasks", "Unassigned high-priority work"],
-  ["unresolvedQuestions", "Open questions"],
-  ["contactFollowUps", "Contact follow-ups"],
+  ["activeTasks", "Active tasks"],
+  ["questions", "Questions"],
   ["resources", "Recently added resources"],
 ];
 

@@ -25,6 +25,12 @@ describe("authorization", () => {
     expect(authorizeTelegram("7", "56", env)).toBeNull());
   it("resolves one conservative alias", () =>
     expect(resolveTeamMember("S", env.teamMembers)?.name).toBe("Sara"));
+  it("matches aliases case-insensitively while ignoring punctuation", () =>
+    expect(resolveTeamMember("  s!!! ", env.teamMembers)?.name).toBe("Sara"));
+  it("matches a configured team member by email", () =>
+    expect(resolveTeamMember("SARA@EXAMPLE.COM", env.teamMembers)?.name).toBe(
+      "Sara",
+    ));
   it("compares secrets", () => {
     expect(secretsEqual("secret", "secret")).toBe(true);
     expect(secretsEqual("wrong", "secret")).toBe(false);

@@ -5,14 +5,9 @@ export const digestDataSchema = z.object({
   periodEnd: z.string(),
   logEntries: z.array(z.string()),
   completedTasks: z.array(z.string()),
-  upcomingTasks: z.array(z.string()),
-  overdueTasks: z.array(z.string()),
-  blockedTasks: z.array(z.string()),
-  unassignedHighPriorityTasks: z.array(z.string()),
-  contactFollowUps: z.array(z.string()),
-  decisions: z.array(z.string()),
+  activeTasks: z.array(z.string()),
   resources: z.array(z.string()),
-  unresolvedQuestions: z.array(z.string()),
+  questions: z.array(z.string()),
 });
 export const projectDigestSchema = z.object({
   subject: z.string().min(1),

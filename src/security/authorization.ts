@@ -21,15 +21,25 @@ export function authorizeTelegram(
     env.allowedTelegramChatIds.includes(chatId);
   return member && chatAllowed ? member : null;
 }
+
+export function normalizeIdentity(value: string): string {
+  return value
+    .normalize("NFKD")
+    .toLocaleLowerCase()
+    .replace(/[\p{P}\p{S}]+/gu, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
 export function resolveTeamMember(
   name: string | null,
   team: TeamMember[],
 ): TeamMember | null {
   if (!name) return null;
-  const normalized = name.trim().toLowerCase();
+  const normalized = normalizeIdentity(name);
   const matches = team.filter((member) =>
-    [member.name, ...member.aliases].some(
-      (alias) => alias.trim().toLowerCase() === normalized,
+    [member.email, member.name, ...member.aliases].some(
+      (alias) => normalizeIdentity(alias) === normalized,
     ),
   );
   return matches.length === 1 ? matches[0]! : null;

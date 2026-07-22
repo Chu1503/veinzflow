@@ -13,47 +13,37 @@ export function canonicalUrl(value: string): string {
 export type ContactCandidate = {
   id: string;
   name: string;
-  organization?: string | null;
-  email?: string | null;
+  contactDetails?: string | null;
 };
 export function findContactDuplicate(
-  item: { name: string; organization?: string | null; email?: string | null },
+  item: { name: string; contactDetails?: string | null },
   candidates: ContactCandidate[],
 ): ContactCandidate | undefined {
-  const email = item.email?.trim().toLowerCase();
-  if (email) {
+  const contactDetails = item.contactDetails?.trim().toLowerCase();
+  if (contactDetails) {
     const match = candidates.find(
-      (candidate) => candidate.email?.trim().toLowerCase() === email,
+      (candidate) =>
+        candidate.contactDetails?.trim().toLowerCase() === contactDetails,
     );
     if (match) return match;
   }
   const name = normalizeName(item.name);
-  const organization = item.organization
-    ? normalizeName(item.organization)
-    : "";
-  return (
-    candidates.find(
-      (candidate) =>
-        normalizeName(candidate.name) === name &&
-        (!organization ||
-          normalizeName(candidate.organization ?? "") === organization),
-    ) ?? candidates.find((candidate) => normalizeName(candidate.name) === name)
-  );
+  return candidates.find((candidate) => normalizeName(candidate.name) === name);
 }
 export type ResourceCandidate = {
   id: string;
   title: string;
-  url?: string | null;
+  link?: string | null;
 };
 export function findResourceDuplicate(
-  item: { title: string; url?: string | null },
+  item: { title: string; link?: string | null },
   candidates: ResourceCandidate[],
 ): ResourceCandidate | undefined {
-  if (item.url) {
-    const normalized = canonicalUrl(item.url);
+  if (item.link) {
+    const normalized = canonicalUrl(item.link);
     const match = candidates.find(
       (candidate) =>
-        candidate.url && canonicalUrl(candidate.url) === normalized,
+        candidate.link && canonicalUrl(candidate.link) === normalized,
     );
     if (match) return match;
   }

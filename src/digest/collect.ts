@@ -16,7 +16,7 @@ export async function collectDigest(
   since: Date,
   now: Date,
 ): Promise<DigestInput> {
-  const [logs, tasks, contacts, resources] = await Promise.all([
+  const [logs, tasks, resources] = await Promise.all([
     queryAll(
       client,
       required(
@@ -30,90 +30,37 @@ export async function collectDigest(
     ),
     queryAll(
       client,
-      required(env.NOTION_CONTACTS_DATABASE_ID, "NOTION_CONTACTS_DATABASE_ID"),
-    ),
-    queryAll(
-      client,
       required(
         env.NOTION_RESOURCES_DATABASE_ID,
         "NOTION_RESOURCES_DATABASE_ID",
       ),
     ),
   ]);
-  const today = now.toISOString().slice(0, 10);
-  const nextWeek = new Date(now.getTime() + 7 * 86_400_000)
-    .toISOString()
-    .slice(0, 10);
-  const due = (page: PageObjectResponse) => plainProperty(page, "Due Date");
   const status = (page: PageObjectResponse) => plainProperty(page, "Status");
   return {
     periodStart: since.toISOString(),
     periodEnd: now.toISOString(),
     logEntries: logs
       .filter((page) => createdSince(page, since))
-      .map((page) => title(page, "Entry Title")),
+      .map((page) => title(page, "Title")),
     completedTasks: tasks
       .filter((page) => status(page) === "Done" && createdSince(page, since))
       .map((page) => title(page, "Task")),
-    upcomingTasks: tasks
-      .filter((page) => {
-        const value = due(page);
-        return (
-          value &&
-          value >= today &&
-          value <= nextWeek &&
-          status(page) !== "Done"
-        );
-      })
-      .map((page) => `${title(page, "Task")} — due ${due(page)}`),
-    overdueTasks: tasks
-      .filter((page) => {
-        const value = due(page);
-        return (
-          value &&
-          value < today &&
-          !["Done", "Cancelled"].includes(status(page) ?? "")
-        );
-      })
-      .map((page) => `${title(page, "Task")} — due ${due(page)}`),
-    blockedTasks: tasks
-      .filter((page) => status(page) === "Blocked")
-      .map((page) => title(page, "Task")),
-    unassignedHighPriorityTasks: tasks
-      .filter(
-        (page) =>
-          ["Critical", "High"].includes(
-            plainProperty(page, "Priority") ?? "",
-          ) &&
-          page.properties["Assigned To"]?.type === "people" &&
-          page.properties["Assigned To"].people.length === 0,
+    activeTasks: tasks
+      .filter((page) =>
+        ["Not Started", "In Progress"].includes(status(page) ?? ""),
       )
       .map((page) => title(page, "Task")),
-    contactFollowUps: contacts
-      .filter((page) => {
-        const value = plainProperty(page, "Next Follow-Up");
-        return value && value <= nextWeek;
-      })
-      .map(
-        (page) =>
-          `${title(page, "Name")} — ${plainProperty(page, "Next Follow-Up")}`,
-      ),
-    decisions: logs
-      .filter(
-        (page) =>
-          createdSince(page, since) &&
-          Boolean(plainProperty(page, "Decisions Made")),
-      )
-      .map((page) => plainProperty(page, "Decisions Made")!),
     resources: resources
       .filter((page) => createdSince(page, since))
       .map((page) => title(page, "Title")),
-    unresolvedQuestions: tasks
-      .filter(
-        (page) =>
-          plainProperty(page, "Type") === "Question" &&
-          !["Done", "Cancelled"].includes(status(page) ?? ""),
-      )
-      .map((page) => title(page, "Task")),
+    questions: logs
+      .filter((page) => createdSince(page, since))
+      .flatMap((page) =>
+        (plainProperty(page, "Questions") ?? "")
+          .split("\n")
+          .map((question) => question.trim())
+          .filter(Boolean),
+      ),
   };
 }

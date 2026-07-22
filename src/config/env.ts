@@ -26,7 +26,6 @@ const baseSchema = z.object({
   NOTION_RESOURCES_DATABASE_ID: z.string().optional(),
   NOTION_TASKS_DATABASE_ID: z.string().optional(),
   NOTION_PROJECT_LOG_DATABASE_ID: z.string().optional(),
-  NOTION_SYSTEM_STATE_DATABASE_ID: z.string().optional(),
   TRANSCRIPTION_PROVIDER: z.enum(["openai", "groq"]).default("groq"),
   EXTRACTION_PROVIDER: z
     .enum(["openai", "anthropic", "gemini"])

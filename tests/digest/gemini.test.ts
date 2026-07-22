@@ -13,14 +13,9 @@ const data = {
   periodEnd: "2026-07-22",
   logEntries: ["Completed ultrasound calibration"],
   completedTasks: ["Calibrate probe"],
-  upcomingTasks: ["Review signal quality"],
-  overdueTasks: [],
-  blockedTasks: [],
-  unassignedHighPriorityTasks: [],
-  contactFollowUps: ["Follow up with Dr. Patel"],
-  decisions: ["Use the revised protocol"],
+  activeTasks: ["Review signal quality"],
   resources: ["Ultrasound methods paper"],
-  unresolvedQuestions: ["Which cuff size is best?"],
+  questions: ["Which cuff size is best?"],
 };
 
 describe("Gemini digest", () => {

@@ -5,10 +5,16 @@ import {
   findResourceDuplicate,
 } from "@/services/deduplicate";
 describe("deduplication", () => {
-  it("matches contacts by normalized email before name", () => {
+  it("matches contacts by normalized contact details before name", () => {
     const result = findContactDuplicate(
-      { name: "Different", email: "PATEL@example.com" },
-      [{ id: "1", name: "Dr. Patel", email: "patel@example.com" }],
+      { name: "Different", contactDetails: "PATEL@example.com" },
+      [
+        {
+          id: "1",
+          name: "Dr. Patel",
+          contactDetails: "patel@example.com",
+        },
+      ],
     );
     expect(result?.id).toBe("1");
   });
@@ -18,8 +24,8 @@ describe("deduplication", () => {
     );
     expect(
       findResourceDuplicate(
-        { title: "Other", url: "https://example.com/paper?utm_medium=y" },
-        [{ id: "r", title: "Paper", url: "https://example.com/paper/" }],
+        { title: "Other", link: "https://example.com/paper?utm_medium=y" },
+        [{ id: "r", title: "Paper", link: "https://example.com/paper/" }],
       )?.id,
     ).toBe("r");
   });

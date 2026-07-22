@@ -8,5 +8,4 @@ export const APP_DEFAULTS = {
 } as const;
 
 export const SOURCE = "Telegram";
-export const DIGEST_STATE_KEY = "last_successful_digest_at";
 export const SCHEMA_VERSION = "1";

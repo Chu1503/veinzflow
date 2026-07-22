@@ -9,16 +9,3 @@ export function dateInTimezone(
     day: "2-digit",
   }).format(date);
 }
-
-export function calendarDaysElapsed(
-  previous: Date,
-  current: Date,
-  timezone: string,
-): number {
-  const key = (value: Date) => dateInTimezone(value, timezone);
-  const [py, pm, pd] = key(previous).split("-").map(Number);
-  const [cy, cm, cd] = key(current).split("-").map(Number);
-  return Math.floor(
-    (Date.UTC(cy!, cm! - 1, cd) - Date.UTC(py!, pm! - 1, pd)) / 86_400_000,
-  );
-}

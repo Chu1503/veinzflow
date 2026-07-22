@@ -1,13 +1,11 @@
-import { calendarDaysElapsed } from "@/lib/dates";
-export function isDigestDue(
-  lastSuccessful: string | null,
-  now: Date,
-  timezone: string,
-): boolean {
-  if (!lastSuccessful) return true;
-  const previous = new Date(lastSuccessful);
-  return (
-    Number.isFinite(previous.getTime()) &&
-    calendarDaysElapsed(previous, now, timezone) >= 2
+import { dateInTimezone } from "@/lib/dates";
+
+export function isDigestScheduledDay(now: Date, timezone: string): boolean {
+  const [year, month, day] = dateInTimezone(now, timezone)
+    .split("-")
+    .map(Number);
+  const calendarDay = Math.floor(
+    Date.UTC(year!, month! - 1, day!) / 86_400_000,
   );
+  return calendarDay % 2 === 0;
 }

@@ -1,6 +1,6 @@
 # VeinzFlow
 
-VeinzFlow is the research-operations system for a four-person vein research project. Team members send Telegram text, links, captions, documents, or short voice notes. The app transcribes voice, extracts a validated project update, safely writes contacts/resources/tasks/logs to Notion, sends a concise Telegram receipt, and emails a project digest every two calendar days.
+VeinzFlow is a lightweight research-operations system. Team members send Telegram text, links, captions, documents, or short voice notes. The app transcribes voice, extracts a validated project update, safely writes contacts/resources/tasks/logs to Notion, sends a concise Telegram receipt, and emails a project digest every two calendar days.
 
 ## Architecture
 
@@ -10,9 +10,9 @@ Telegram → signed Next.js webhook → authorization and limits
          → Gemini, OpenAI, or Anthropic extraction → Zod validation
          → deduplication → deterministic Notion mappings → receipt
 
-Vercel daily cron → two-day due check → Notion collection
+Vercel daily cron → deterministic alternate-day check → Notion collection
                   → Gemini, OpenAI, or Anthropic digest (deterministic fallback)
-                  → Gmail or Resend → successful-send timestamp
+                  → Gmail or Resend
 ```
 
 Notion is the source of truth. No production database or queue is required in version 1. Raw audio is processed in memory and is not retained.
@@ -57,9 +57,21 @@ Open `http://localhost:3000`. `/api/health` reports only safe configuration bool
    npm run setup:notion
    ```
 
-The safely repeatable script creates Contacts, Resources, Tasks and Questions, Project Log, and System State data sources plus relations and home-page guidance. It prints five IDs. Copy them into the matching `NOTION_*_DATABASE_ID` variables in `.env.local`; despite the legacy variable names, these values are Notion data-source IDs under the current API.
+The safely repeatable script creates four data sources: Contacts, Resources, Tasks, and Project Log. It prints four IDs. Copy them into the matching `NOTION_*_DATABASE_ID` variables in `.env.local`; despite the legacy variable names, these values are Notion data-source IDs under the current API.
 
-Notion’s API cannot create every preferred linked-database view. In the Notion UI, optionally add linked views for overdue tasks, upcoming follow-ups, and recent log entries to the parent page.
+Contacts intentionally has only `Name`, `Contact Details`, `Contact Status`, `Expertise`, and `Notes`. `Contact Details` can contain multiple newline-separated emails, phone numbers, profiles, websites, or other ways to make contact. Status is blank or one of `Need to Contact`, `Contacted`, and `Waiting for Response`. Organization, role, ways the contact could help, meeting context, and miscellaneous useful facts belong in `Notes`.
+
+### Contacts migration
+
+Before upgrading an existing workspace, export or duplicate the Contacts data source as a backup. Rerunning `npm run setup:notion` adds the streamlined properties; consolidates legacy Email, Phone, and Website values into `Contact Details`; moves Organization, Role, Why Relevant, What We Discussed, Outcome, and Next Step text into `Notes`; removes every other Contacts property; and moves the obsolete internal state data source to Notion trash. Review unusual relation/date metadata before migration if it must be retained. The runtime no longer reads the removed state data source or its environment variable.
+
+Resources contains only `Title`, `Resource Type`, `Link`, `Description`, and `Notes`. Resource Type is `Paper`, `Repo`, or `Other`; legacy authorship, publication, citation, findings, and relevance text is consolidated into Notes.
+
+Tasks contains only `Task`, `Assigned To`, and `Status`. Status is `Not Started`, `In Progress`, `Done`, or `Cancelled`. Useful context is summarized in the task page body rather than separate columns.
+
+Project Log contains only `Title`, `Outcome`, `Date`, `Next Steps`, and `Questions`. Participants, legacy summaries, completed work, decisions, and experiment observations are consolidated into Outcome. The setup migration also removes the generated guidance/footer blocks from the parent Notion page.
+
+Notion’s API cannot create every preferred linked-database view. In the Notion UI, optionally add linked views for active tasks and recent log entries to the parent page.
 
 ## Telegram bot setup
 
@@ -69,11 +81,13 @@ Notion’s API cannot create every preferred linked-database view. In the Notion
 4. Add each person to `TEAM_MEMBERS_JSON` and allowed chats to comma-separated `ALLOWED_TELEGRAM_CHAT_IDS`:
 
    ```env
-   TEAM_MEMBERS_JSON=[{"name":"Chu","telegramUserId":"123456789","notionUserId":"notion-user-id","email":"person@example.com","aliases":["Chu"]}]
+   TEAM_MEMBERS_JSON=[{"name":"Chu","telegramUserId":"123456789","email":"person@example.com","aliases":["Chu"]}]
    ALLOWED_TELEGRAM_CHAT_IDS=123456789,-1001234567890
    ```
 
 5. Set `APP_URL` to the public HTTPS URL and run `npm run telegram:register`. Remove the webhook with `npm run telegram:delete-webhook`.
+
+`notionUserId` remains an optional compatibility fallback. VeinzFlow normally lists workspace users when the Notion client first starts, matches each configured member by email first and display name second, and caches the mapping in memory for 24 hours. Email addresses can also be used directly in task submissions. Unmatched members produce a warning without stopping the app. To refresh immediately, send authenticated `POST /api/admin/refresh-notion-users` with `Authorization: Bearer $ADMIN_SECRET`; the response contains counts only, never emails or IDs.
 
 Telegram’s official [Bot API documentation](https://core.telegram.org/bots/api#setwebhook) describes webhook registration and secret tokens.
 
@@ -200,7 +214,7 @@ For ID diagnostics before webhook registration, use `getUpdates`. Telegram will 
 4. Run `npm run telegram:register` from a trusted local terminal using the production values.
 5. Open `/api/health`, send a Telegram test message, confirm the Notion records and receipt, then test the digest endpoint with an authenticated request.
 
-`vercel.json` registers `/api/cron/digest` daily at 15:00 UTC. Vercel automatically sends `Authorization: Bearer $CRON_SECRET`; see [Vercel cron security](https://vercel.com/docs/cron-jobs/manage-cron-jobs#securing-cron-jobs). The route sends only when two calendar days have elapsed in `APP_TIMEZONE` since the last successful send.
+`vercel.json` registers `/api/cron/digest` daily at 15:00 UTC. Vercel automatically sends `Authorization: Bearer $CRON_SECRET`; see [Vercel cron security](https://vercel.com/docs/cron-jobs/manage-cron-jobs#securing-cron-jobs). The route uses a deterministic alternate-calendar-day schedule in `APP_TIMEZONE`, so it needs no operational state database.
 
 Local digest test:
 
@@ -215,10 +229,11 @@ curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/dige
 - **No voice transcription:** check the selected provider, its key, audio size/duration, and supported Telegram metadata. Groq accepts OGG directly; a 429 indicates the account/project rate limit was reached.
 - **Gemini 429 or 400:** verify the selected model exists for the API key's project and region, then inspect current AI Studio quotas. Free-tier availability is not guaranteed in every region.
 - **Notion validation error:** rerun `setup:notion`, use the printed data-source IDs, and confirm the integration still has page access.
-- **Unassigned task:** expected when an alias is missing or ambiguous. Add a unique alias; VeinzFlow deliberately does not guess.
-- **Digest says `not_due`:** fewer than two local calendar days have elapsed since the recorded successful send.
+- **Unassigned task:** verify the configured name/email and aliases. Matching ignores case, surrounding whitespace, and punctuation. Duplicate aliases remain unassigned because they are genuinely ambiguous.
+- **Stale Notion assignee mapping:** call authenticated `POST /api/admin/refresh-notion-users`; otherwise the in-memory cache refreshes after 24 hours or on a new runtime instance.
+- **Digest says `not_due`:** today is not one of the deterministic alternate calendar days in `APP_TIMEZONE`.
 - **Gmail 401:** refresh token may be revoked or was issued without offline access and `gmail.send`.
-- **Partial write:** inspect Vercel logs and the Telegram receipt. Completed records remain; source IDs prevent duplicate tasks/logs when retried.
+- **Partial write:** inspect Vercel logs and the Telegram receipt. Contacts/resources deduplicate by details or links, tasks by title, and log entries by title plus date.
 
 ## Security
 
@@ -239,4 +254,4 @@ Notion is the backup boundary: export the VeinzFlow page regularly as Markdown/C
 - Arbitrary PDF/document contents are not parsed; only basic metadata/captions are captured.
 - Notion API views require a small optional manual layout step.
 - Contact/resource linking is conservative, and task semantic deduplication intentionally avoids aggressive guesses.
-- System State prevents ordinary duplicate delivery but is not a distributed lock against simultaneous cron invocations.
+- Contacts are matched by normalized Contact Details and then name; resources by Link and then title; tasks by title; and log entries by title plus date. There is no cross-instance webhook delivery ledger.

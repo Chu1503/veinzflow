@@ -10,21 +10,22 @@ import type {
   ResourceUpdate,
   TaskUpdate,
 } from "@/schemas/project-update";
-import { resolveTeamMember } from "@/security/authorization";
 import { retry } from "@/lib/retry";
 import {
   findContactDuplicate,
   findResourceDuplicate,
+  normalizeName,
 } from "@/services/deduplicate";
 import {
   mapContact,
   mapProjectLog,
   mapResource,
   mapTask,
-  projectLogChildren,
+  taskChildren,
   type PageProperties,
 } from "./mapping";
-import { plainProperty, queryAll, queryEquals } from "./query";
+import { plainProperty, queryAll } from "./query";
+import { resolveNotionUserId, type NotionUserMapping } from "./users";
 
 export type WriteResult = {
   kind: "contact" | "resource" | "task" | "log";
@@ -104,12 +105,10 @@ export async function upsertContact(
     candidates.map((page) => ({
       id: page.id,
       name: plainProperty(page, "Name") ?? "",
-      organization: plainProperty(page, "Organization"),
-      email: plainProperty(page, "Email"),
+      contactDetails: plainProperty(page, "Contact Details"),
     })),
   );
-  const owner = resolveTeamMember(item.ownerName, env.teamMembers);
-  const properties = mapContact(item, owner?.notionUserId || undefined);
+  const properties = mapContact(item);
   const page = duplicate
     ? await update(client, duplicate.id, properties)
     : await create(client, id, properties);
@@ -135,7 +134,7 @@ export async function upsertResource(
     candidates.map((page) => ({
       id: page.id,
       title: plainProperty(page, "Title") ?? "",
-      url: plainProperty(page, "URL"),
+      link: plainProperty(page, "Link"),
     })),
   );
   const page = duplicate
@@ -152,33 +151,34 @@ export async function createTask(
   client: Client,
   env: AppEnv,
   item: TaskUpdate,
+  userMapping: NotionUserMapping,
 ): Promise<WriteResult> {
   const id = configured(
     env.NOTION_TASKS_DATABASE_ID,
     "NOTION_TASKS_DATABASE_ID",
   );
-  const existing = await queryEquals(
-    client,
-    id,
-    "Telegram Source ID",
-    "rich_text",
-    item.sourceMessageId,
+  const existing = (await queryAll(client, id)).find(
+    (page) =>
+      normalizeName(plainProperty(page, "Task") ?? "") ===
+      normalizeName(item.title),
   );
-  if (existing.length)
+  if (existing)
     return {
       kind: "task",
       title: item.title,
       action: "skipped",
-      id: existing[0]!.id,
+      id: existing.id,
     };
-  const assignee = resolveTeamMember(item.assignedToName, env.teamMembers);
-  const collaborators = item.collaboratorNames
-    .map((name) => resolveTeamMember(name, env.teamMembers)?.notionUserId)
-    .filter((value): value is string => Boolean(value));
+  const assigneeId = resolveNotionUserId(
+    item.assignedToName,
+    env.teamMembers,
+    userMapping,
+  );
   const page = await create(
     client,
     id,
-    mapTask(item, assignee?.notionUserId || undefined, collaborators),
+    mapTask(item, assigneeId || undefined),
+    item.notes ? taskChildren(item) : undefined,
   );
   return { kind: "task", title: item.title, action: "created", id: page.id };
 }
@@ -191,28 +191,18 @@ export async function createProjectLog(
     env.NOTION_PROJECT_LOG_DATABASE_ID,
     "NOTION_PROJECT_LOG_DATABASE_ID",
   );
-  const existing = await queryEquals(
-    client,
-    id,
-    "Telegram Source ID",
-    "rich_text",
-    item.sourceMessageId,
+  const existing = (await queryAll(client, id)).find(
+    (page) =>
+      normalizeName(plainProperty(page, "Title") ?? "") ===
+        normalizeName(item.title) && plainProperty(page, "Date") === item.date,
   );
-  if (existing.length)
+  if (existing)
     return {
       kind: "log",
       title: item.title,
       action: "skipped",
-      id: existing[0]!.id,
+      id: existing.id,
     };
-  const participants = item.participantNames
-    .map((name) => resolveTeamMember(name, env.teamMembers)?.notionUserId)
-    .filter((value): value is string => Boolean(value));
-  const page = await create(
-    client,
-    id,
-    mapProjectLog(item, participants),
-    projectLogChildren(item),
-  );
+  const page = await create(client, id, mapProjectLog(item));
   return { kind: "log", title: item.title, action: "created", id: page.id };
 }

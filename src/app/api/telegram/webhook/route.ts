@@ -6,7 +6,6 @@ import { normalizeTelegramUpdate } from "@/telegram/normalize-update";
 import type { TelegramUpdate } from "@/telegram/types";
 import { TelegramClient } from "@/telegram/client";
 import { getNotionClient } from "@/notion/client";
-import { getState, setState } from "@/notion/system-state";
 import { processSubmission } from "@/services/process-submission";
 import { errorReply } from "@/telegram/replies";
 import { logger } from "@/lib/logger";
@@ -40,18 +39,10 @@ export async function POST(request: Request) {
     return Response.json({ error: "Sender not authorized" }, { status: 403 });
   if (!checkRateLimit(submission.userId))
     return Response.json({ error: "Rate limit exceeded" }, { status: 429 });
-  if (!env.TELEGRAM_BOT_TOKEN || !env.NOTION_SYSTEM_STATE_DATABASE_ID)
+  if (!env.TELEGRAM_BOT_TOKEN)
     return Response.json({ error: "Service not configured" }, { status: 503 });
   const telegram = new TelegramClient(env.TELEGRAM_BOT_TOKEN);
   const notion = getNotionClient();
-  const stateKey = `telegram_update:${submission.updateId}`;
-  if (await getState(notion, env.NOTION_SYSTEM_STATE_DATABASE_ID, stateKey)) {
-    await telegram.sendMessage(
-      submission.chatId,
-      "This update was already processed; no duplicate records were created.",
-    );
-    return Response.json({ ok: true, duplicate: true });
-  }
   try {
     const result = await processSubmission({
       submission,
@@ -61,13 +52,6 @@ export async function POST(request: Request) {
       telegram,
     });
     await telegram.sendMessage(submission.chatId, result.reply);
-    if (!result.reply.includes("clarification"))
-      await setState(
-        notion,
-        env.NOTION_SYSTEM_STATE_DATABASE_ID,
-        stateKey,
-        new Date().toISOString(),
-      );
     return Response.json({ ok: true });
   } catch (error) {
     logger.error("Telegram submission failed", {

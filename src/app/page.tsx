@@ -50,8 +50,7 @@ export default function Home() {
         </h1>
         <p className="lede">
           VeinzFlow turns voice notes, links, conversations, and quick updates
-          into a traceable Notion workspace—then keeps the whole four-person
-          team aligned.
+          into a traceable Notion workspace—then keeps the team aligned.
         </p>
         <div className="hero-actions">
           <a className="primary" href="#setup">

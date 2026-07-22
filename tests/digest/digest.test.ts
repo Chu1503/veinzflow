@@ -1,36 +1,31 @@
 import { describe, expect, it } from "vitest";
-import { isDigestDue } from "@/digest/schedule";
+import { isDigestScheduledDay } from "@/digest/schedule";
 import { renderDigest } from "@/digest/render";
 const data = {
   periodStart: "2026-07-19",
   periodEnd: "2026-07-21",
   logEntries: ["Experiment completed"],
   completedTasks: [],
-  upcomingTasks: [],
-  overdueTasks: [],
-  blockedTasks: [],
-  unassignedHighPriorityTasks: [],
-  contactFollowUps: [],
-  decisions: [],
+  activeTasks: [],
   resources: [],
-  unresolvedQuestions: [],
+  questions: [],
 };
 describe("digest", () => {
-  it("is due after two calendar days", () => {
-    expect(
-      isDigestDue(
-        "2026-07-19T23:00:00Z",
-        new Date("2026-07-22T05:00:00Z"),
-        "America/Chicago",
-      ),
-    ).toBe(true);
-    expect(
-      isDigestDue(
-        "2026-07-21T05:00:00Z",
-        new Date("2026-07-22T04:00:00Z"),
-        "America/Chicago",
-      ),
-    ).toBe(false);
+  it("uses deterministic alternate calendar days", () => {
+    const first = isDigestScheduledDay(
+      new Date("2026-07-22T18:00:00Z"),
+      "America/Chicago",
+    );
+    const next = isDigestScheduledDay(
+      new Date("2026-07-23T18:00:00Z"),
+      "America/Chicago",
+    );
+    const twoDaysLater = isDigestScheduledDay(
+      new Date("2026-07-24T18:00:00Z"),
+      "America/Chicago",
+    );
+    expect(next).toBe(!first);
+    expect(twoDaysLater).toBe(first);
   });
   it("renders a deterministic fallback", () => {
     const digest = renderDigest(data);

@@ -52,10 +52,10 @@ export async function processSubmission(input: {
         submittedBy: member.name,
         currentDate: dateInTimezone(new Date(), env.APP_TIMEZONE),
         timezone: env.APP_TIMEZONE,
-        teamMemberAliases: env.teamMembers.flatMap((teamMember) => [
-          teamMember.name,
-          ...teamMember.aliases,
-        ]),
+        teamMemberAliases: env.teamMembers.map(
+          (teamMember) =>
+            `${teamMember.email}: ${teamMember.name} (aliases: ${teamMember.aliases.join(", ") || "none"})`,
+        ),
       }),
     env.MAX_AI_ATTEMPTS,
   );

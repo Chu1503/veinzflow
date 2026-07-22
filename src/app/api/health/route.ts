@@ -28,8 +28,7 @@ export async function GET() {
         env.NOTION_CONTACTS_DATABASE_ID &&
         env.NOTION_RESOURCES_DATABASE_ID &&
         env.NOTION_TASKS_DATABASE_ID &&
-        env.NOTION_PROJECT_LOG_DATABASE_ID &&
-        env.NOTION_SYSTEM_STATE_DATABASE_ID,
+        env.NOTION_PROJECT_LOG_DATABASE_ID,
       ),
       transcription: env.TRANSCRIPTION_PROVIDER,
       extraction: env.EXTRACTION_PROVIDER,
