@@ -27,23 +27,30 @@ const baseSchema = z.object({
   NOTION_TASKS_DATABASE_ID: z.string().optional(),
   NOTION_PROJECT_LOG_DATABASE_ID: z.string().optional(),
   NOTION_SYSTEM_STATE_DATABASE_ID: z.string().optional(),
-  TRANSCRIPTION_PROVIDER: z.enum(["openai"]).default("openai"),
-  EXTRACTION_PROVIDER: z.enum(["openai", "anthropic"]).default("openai"),
-  DIGEST_PROVIDER: z.enum(["openai", "anthropic"]).default("openai"),
+  TRANSCRIPTION_PROVIDER: z.enum(["openai", "groq"]).default("groq"),
+  EXTRACTION_PROVIDER: z
+    .enum(["openai", "anthropic", "gemini"])
+    .default("gemini"),
+  DIGEST_PROVIDER: z.enum(["openai", "anthropic", "gemini"]).default("gemini"),
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_TRANSCRIPTION_MODEL: z.string().default("gpt-4o-mini-transcribe"),
   OPENAI_EXTRACTION_MODEL: z.string().default("gpt-4.1-mini"),
   OPENAI_DIGEST_MODEL: z.string().default("gpt-4.1-mini"),
+  GROQ_API_KEY: z.string().optional(),
+  GROQ_TRANSCRIPTION_MODEL: z.string().default("whisper-large-v3-turbo"),
   ANTHROPIC_API_KEY: z.string().optional(),
   ANTHROPIC_EXTRACTION_MODEL: z.string().default("claude-3-5-haiku-latest"),
   ANTHROPIC_DIGEST_MODEL: z.string().default("claude-3-5-haiku-latest"),
+  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_EXTRACTION_MODEL: z.string().default("gemini-3.5-flash"),
+  GEMINI_DIGEST_MODEL: z.string().default("gemini-3.5-flash"),
   EMAIL_PROVIDER: z.enum(["gmail", "resend"]).default("gmail"),
   GMAIL_CLIENT_ID: z.string().optional(),
   GMAIL_CLIENT_SECRET: z.string().optional(),
   GMAIL_REFRESH_TOKEN: z.string().optional(),
-  GMAIL_SENDER_EMAIL: z.string().email().optional(),
+  GMAIL_SENDER_EMAIL: z.string().email().optional().or(z.literal("")),
   RESEND_API_KEY: z.string().optional(),
-  RESEND_FROM_EMAIL: z.string().email().optional(),
+  RESEND_FROM_EMAIL: z.string().email().optional().or(z.literal("")),
   CRON_SECRET: z.string().optional(),
   ADMIN_SECRET: z.string().optional(),
   MAX_AUDIO_DURATION_SECONDS: z.coerce
@@ -99,10 +106,27 @@ export function parseEnv(
     ] as const;
     for (const key of required)
       if (!env[key]) throw new Error(`${key} is required`);
-    if (env.EXTRACTION_PROVIDER === "openai" && !env.OPENAI_API_KEY)
+    if (
+      (env.TRANSCRIPTION_PROVIDER === "openai" ||
+        env.EXTRACTION_PROVIDER === "openai" ||
+        env.DIGEST_PROVIDER === "openai") &&
+      !env.OPENAI_API_KEY
+    )
       throw new Error("OPENAI_API_KEY is required");
-    if (env.EXTRACTION_PROVIDER === "anthropic" && !env.ANTHROPIC_API_KEY)
+    if (env.TRANSCRIPTION_PROVIDER === "groq" && !env.GROQ_API_KEY)
+      throw new Error("GROQ_API_KEY is required");
+    if (
+      (env.EXTRACTION_PROVIDER === "anthropic" ||
+        env.DIGEST_PROVIDER === "anthropic") &&
+      !env.ANTHROPIC_API_KEY
+    )
       throw new Error("ANTHROPIC_API_KEY is required");
+    if (
+      (env.EXTRACTION_PROVIDER === "gemini" ||
+        env.DIGEST_PROVIDER === "gemini") &&
+      !env.GEMINI_API_KEY
+    )
+      throw new Error("GEMINI_API_KEY is required");
     if (
       env.EMAIL_PROVIDER === "resend" &&
       (!env.RESEND_API_KEY || !env.RESEND_FROM_EMAIL)

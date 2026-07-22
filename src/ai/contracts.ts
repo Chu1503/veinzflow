@@ -13,6 +13,7 @@ export type ExtractionInput = {
   submittedBy: string;
   currentDate: string;
   timezone: string;
+  teamMemberAliases?: string[];
 };
 export interface TranscriptionProvider {
   transcribe(input: TranscriptionInput): Promise<Transcript>;

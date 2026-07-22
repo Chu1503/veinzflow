@@ -4,7 +4,7 @@
 
 VeinzFlow is a low-cost, traceable research-operations pipeline for four people. Telegram is capture/transport, AI providers transcribe or extract, Zod owns the provider-independent domain boundary, deterministic services map validated objects, Notion is the source of truth, and email providers deliver the digest. Keep these layers separate.
 
-Provider selection belongs only in `src/ai/*/index.ts` and `src/email/index.ts`. Telegram code must not depend on OpenAI/Anthropic details. Notion code must never accept an arbitrary model-authored payload.
+Provider selection belongs only in `src/ai/*/index.ts` and `src/email/index.ts`. Telegram code must not depend on Groq, Gemini, OpenAI, or Anthropic details. Notion code must never accept an arbitrary model-authored payload. Groq is the default transcription provider; Gemini is the default extraction and digest provider. OpenAI and Anthropic remain supported fallbacks.
 
 ## Non-negotiable rules
 

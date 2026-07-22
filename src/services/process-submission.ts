@@ -52,6 +52,10 @@ export async function processSubmission(input: {
         submittedBy: member.name,
         currentDate: dateInTimezone(new Date(), env.APP_TIMEZONE),
         timezone: env.APP_TIMEZONE,
+        teamMemberAliases: env.teamMembers.flatMap((teamMember) => [
+          teamMember.name,
+          ...teamMember.aliases,
+        ]),
       }),
     env.MAX_AI_ATTEMPTS,
   );

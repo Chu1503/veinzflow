@@ -17,9 +17,11 @@ export default function Home() {
     ],
     [
       "AI extraction",
-      env.EXTRACTION_PROVIDER === "openai"
-        ? Boolean(env.OPENAI_API_KEY)
-        : Boolean(env.ANTHROPIC_API_KEY),
+      env.EXTRACTION_PROVIDER === "gemini"
+        ? Boolean(env.GEMINI_API_KEY)
+        : env.EXTRACTION_PROVIDER === "openai"
+          ? Boolean(env.OPENAI_API_KEY)
+          : Boolean(env.ANTHROPIC_API_KEY),
     ],
     [
       "Team digest",

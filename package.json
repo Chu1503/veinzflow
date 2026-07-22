@@ -21,6 +21,8 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "latest",
+    "@google/genai": "^2.13.0",
+    "@next/env": "^16.2.11",
     "@notionhq/client": "latest",
     "googleapis": "latest",
     "next": "latest",

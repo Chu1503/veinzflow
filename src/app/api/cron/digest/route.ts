@@ -6,7 +6,7 @@ import { DIGEST_STATE_KEY } from "@/config/constants";
 import { isDigestDue } from "@/digest/schedule";
 import { collectDigest } from "@/digest/collect";
 import { createDigestProvider } from "@/ai/digest";
-import { renderDigest } from "@/digest/render";
+import { generateDigestWithFallback } from "@/digest/generate";
 import { createEmailProvider } from "@/email";
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -34,12 +34,10 @@ export async function GET(request: Request) {
     ? new Date(last)
     : new Date(now.getTime() - 2 * 86_400_000);
   const data = await collectDigest(notion, env, since, now);
-  let digest;
-  try {
-    digest = await createDigestProvider(env).generateDigest(data);
-  } catch {
-    digest = renderDigest(data);
-  }
+  const digest = await generateDigestWithFallback(
+    createDigestProvider(env),
+    data,
+  );
   const recipients = env.teamMembers.map((member) => member.email);
   if (!recipients.length)
     return Response.json(
