@@ -30,7 +30,7 @@ import { resolveNotionUserId, type NotionUserMapping } from "./users";
 export type WriteResult = {
   kind: "contact" | "resource" | "task" | "log";
   title: string;
-  action: "created" | "updated" | "skipped";
+  action: "created" | "updated" | "archived" | "skipped";
   id?: string;
 };
 const parent = (id: string) => ({
@@ -75,7 +75,7 @@ async function create(
     3,
   ) as Promise<PageObjectResponse>;
 }
-async function update(
+export async function updatePage(
   client: Client,
   pageId: string,
   properties: PageProperties,
@@ -86,6 +86,16 @@ async function update(
         page_id: pageId,
         properties: withoutEmpty(properties),
       }),
+    3,
+  ) as Promise<PageObjectResponse>;
+}
+
+export async function archivePage(
+  client: Client,
+  pageId: string,
+): Promise<PageObjectResponse> {
+  return retry(
+    () => client.pages.update({ page_id: pageId, archived: true }),
     3,
   ) as Promise<PageObjectResponse>;
 }
@@ -110,7 +120,7 @@ export async function upsertContact(
   );
   const properties = mapContact(item);
   const page = duplicate
-    ? await update(client, duplicate.id, properties)
+    ? await updatePage(client, duplicate.id, properties)
     : await create(client, id, properties);
   return {
     kind: "contact",
@@ -138,7 +148,7 @@ export async function upsertResource(
     })),
   );
   const page = duplicate
-    ? await update(client, duplicate.id, mapResource(item))
+    ? await updatePage(client, duplicate.id, mapResource(item))
     : await create(client, id, mapResource(item));
   return {
     kind: "resource",

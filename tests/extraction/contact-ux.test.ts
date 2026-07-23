@@ -15,6 +15,8 @@ describe("contact extraction UX", () => {
       teamMemberAliases: ["Sara (aliases: S)"],
     });
     expect(prompt).toContain("organizations, roles, meeting context");
+    expect(prompt).toContain("DELETE + CONTACT + searchText Kevin");
+    expect(prompt).toContain("Never create a record for UPDATE or DELETE");
     expect(prompt).toContain("Never ask for a last name");
     expect(prompt).toContain('use "Contacted"');
   });

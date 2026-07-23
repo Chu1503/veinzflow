@@ -3,6 +3,10 @@ import type {
   PageObjectResponse,
 } from "@notionhq/client";
 import { loadEnvironment } from "./load-environment";
+import {
+  mergeContactTopics,
+  normalizeContactStatus,
+} from "../src/notion/contact-migration";
 type Properties = NonNullable<
   NonNullable<CreateDatabaseParameters["initial_data_source"]>["properties"]
 >;
@@ -34,6 +38,10 @@ const propertyText = (property: PageProperty | undefined): string | null => {
     );
   return null;
 };
+const multiSelectValues = (property: PageProperty | undefined): string[] =>
+  property?.type === "multi_select"
+    ? property.multi_select.map((item) => item.name)
+    : [];
 const richTextContent = (value: string) =>
   value.match(/[\s\S]{1,1900}/g)?.map((content) => ({ text: { content } })) ??
   [];
@@ -68,7 +76,6 @@ async function main(): Promise<void> {
           "Contacted",
           "Waiting for Response",
         ]),
-        Expertise: multi,
         "Could Help With": multi,
         Notes: rich,
       },
@@ -152,18 +159,64 @@ async function main(): Promise<void> {
   }
 
   const contactsId = ids.NOTION_CONTACTS_DATABASE_ID!;
+  const contactsSchema = await notion.dataSources.retrieve({
+    data_source_id: contactsId,
+  });
+  if (!isFullDataSource(contactsSchema))
+    throw new Error("Could not retrieve the Contacts schema for migration");
+  const hasLegacyExpertise = Boolean(contactsSchema.properties.Expertise);
+
   await notion.dataSources.update({
     data_source_id: contactsId,
     properties: {
       "Contact Details": rich,
+      "Could Help With": multi,
+      Notes: rich,
+    },
+  });
+
+  let contactCursor: string | undefined;
+  do {
+    const pages = await notion.dataSources.query({
+      data_source_id: contactsId,
+      page_size: 100,
+      ...(contactCursor ? { start_cursor: contactCursor } : {}),
+    });
+    for (const page of pages.results.filter(isFullPage)) {
+      const currentTopics = multiSelectValues(
+        page.properties["Could Help With"],
+      );
+      const legacyExpertise = hasLegacyExpertise
+        ? multiSelectValues(page.properties.Expertise)
+        : [];
+      const mergedTopics = mergeContactTopics(currentTopics, legacyExpertise);
+      const currentStatus = propertyText(page.properties["Contact Status"]);
+      const normalizedStatus = normalizeContactStatus(currentStatus);
+      await notion.pages.update({
+        page_id: page.id,
+        properties: {
+          "Could Help With": {
+            multi_select: mergedTopics.map((name) => ({ name })),
+          },
+          "Contact Status": {
+            select: normalizedStatus ? { name: normalizedStatus } : null,
+          },
+        },
+      });
+    }
+    contactCursor = pages.has_more
+      ? (pages.next_cursor ?? undefined)
+      : undefined;
+  } while (contactCursor);
+
+  await notion.dataSources.update({
+    data_source_id: contactsId,
+    properties: {
       "Contact Status": select([
         "Need to Contact",
         "Contacted",
         "Waiting for Response",
       ]),
-      "Could Help With": multi,
-      Expertise: multi,
-      Notes: rich,
     },
   });
 
@@ -172,23 +225,23 @@ async function main(): Promise<void> {
     "Contact Details",
     "Contact Status",
     "Could Help With",
-    "Expertise",
     "Notes",
   ]);
-  const contactsSchema = await notion.dataSources.retrieve({
+  const refreshedContactsSchema = await notion.dataSources.retrieve({
     data_source_id: contactsId,
   });
-  if (!isFullDataSource(contactsSchema))
-    throw new Error("Could not retrieve the Contacts schema for migration");
+  if (!isFullDataSource(refreshedContactsSchema))
+    throw new Error("Could not refresh the Contacts schema for migration");
   const removedContactProperties = Object.keys(
-    contactsSchema.properties,
+    refreshedContactsSchema.properties,
   ).filter((property) => !allowedContactProperties.has(property));
-  await notion.dataSources.update({
-    data_source_id: contactsId,
-    properties: Object.fromEntries(
-      removedContactProperties.map((property) => [property, null]),
-    ),
-  });
+  if (removedContactProperties.length)
+    await notion.dataSources.update({
+      data_source_id: contactsId,
+      properties: Object.fromEntries(
+        removedContactProperties.map((property) => [property, null]),
+      ),
+    });
 
   const removeOtherProperties = async (
     dataSourceId: string,

@@ -31,7 +31,6 @@ export function mapContact(item: ContactUpdate): PageProperties {
     Name: title(item.name),
     "Contact Details": text(item.contactDetails),
     "Contact Status": optionalSelect(item.contactStatus),
-    Expertise: multi(item.expertise),
     "Could Help With": multi(item.couldHelpWith),
     Notes: text(item.notes),
   };

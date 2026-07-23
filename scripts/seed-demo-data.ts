@@ -23,7 +23,6 @@ async function main(): Promise<void> {
         name: "Dr. Maya Patel",
         contactDetails: null,
         contactStatus: "Contacted",
-        expertise: ["Ultrasound"],
         couldHelpWith: ["Equipment access"],
         notes:
           "Ultrasound researcher at Demo University. Discussed possible equipment access and requested an equipment list. Demo record.",

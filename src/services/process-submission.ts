@@ -11,6 +11,7 @@ import { retry } from "@/lib/retry";
 import { AppError, isUpstreamRateLimitError } from "@/lib/errors";
 import { clarificationMessage } from "./clarify";
 import { applyProjectUpdate } from "./apply-project-update";
+import { applyCrudOperation } from "./apply-crud-operation";
 
 export async function processSubmission(input: {
   submission: NormalizedSubmission;
@@ -73,6 +74,16 @@ export async function processSubmission(input: {
   const clarification = clarificationMessage(update);
   if (clarification) return { reply: clarification, partial: false };
   onStage?.("notion_write");
+  if (update.intent === "UPDATE" || update.intent === "DELETE") {
+    const operation = await applyCrudOperation(notion, env, update);
+    return { reply: operation.reply, partial: !operation.result };
+  }
+  if (update.intent === "UNKNOWN")
+    return {
+      reply:
+        "I couldn't determine whether to create, update, or delete a record.",
+      partial: false,
+    };
   const results = await applyProjectUpdate(notion, env, update);
   const { successReply } = await import("@/telegram/replies");
   return {

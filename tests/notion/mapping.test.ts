@@ -19,7 +19,6 @@ describe("Notion mapping", () => {
         "Contact Details",
         "Contact Status",
         "Could Help With",
-        "Expertise",
         "Notes",
       ].sort(),
     );

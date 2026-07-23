@@ -27,15 +27,25 @@ export async function queryAll(
   dataSourceId: string,
   filter?: Parameters<Client["dataSources"]["query"]>[0]["filter"],
 ): Promise<PageObjectResponse[]> {
-  const response = await retry(
-    () =>
-      client.dataSources.query({
-        data_source_id: dataSourceId,
-        ...(filter ? { filter } : {}),
-      }),
-    3,
-  );
-  return response.results.filter(isFullPage);
+  const pages: PageObjectResponse[] = [];
+  let cursor: string | undefined;
+  do {
+    const response = await retry(
+      () =>
+        client.dataSources.query({
+          data_source_id: dataSourceId,
+          page_size: 100,
+          ...(filter ? { filter } : {}),
+          ...(cursor ? { start_cursor: cursor } : {}),
+        }),
+      3,
+    );
+    pages.push(...response.results.filter(isFullPage));
+    cursor = response.has_more
+      ? (response.next_cursor ?? undefined)
+      : undefined;
+  } while (cursor);
+  return pages;
 }
 
 export function plainProperty(
@@ -53,4 +63,14 @@ export function plainProperty(
   if (property.type === "select") return property.select?.name ?? null;
   if (property.type === "date") return property.date?.start ?? null;
   return null;
+}
+
+export function multiSelectProperty(
+  page: PageObjectResponse,
+  name: string,
+): string[] {
+  const property = page.properties[name];
+  return property?.type === "multi_select"
+    ? property.multi_select.map((item) => item.name)
+    : [];
 }

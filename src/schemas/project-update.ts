@@ -18,10 +18,9 @@ export const contactUpdateSchema = z.object({
     .describe(
       "Infer from intent/contact history; use null when no status is stated",
     ),
-  expertise: z.array(z.string()).default([]),
   couldHelpWith: z.array(z.string()).default([]),
   notes: optionalText.describe(
-    "Catch-all for organization, role, meeting context, impressions, collaboration interest, and other useful contact facts",
+    "Catch-all for organization, role, meeting context, impressions, collaboration interest, expertise, and other useful contact facts",
   ),
   ...sourceFields,
 });
@@ -58,6 +57,39 @@ export const projectLogEntrySchema = z.object({
   ...sourceFields,
 });
 
+export const entityTypeSchema = z.enum([
+  "CONTACT",
+  "RESOURCE",
+  "TASK",
+  "PROJECT_LOG",
+  "MEETING",
+  "UNKNOWN",
+]);
+
+export const recordChangesSchema = z.object({
+  name: optionalText,
+  title: optionalText,
+  contactDetails: optionalText,
+  contactStatus: z
+    .enum(["Need to Contact", "Contacted", "Waiting for Response"])
+    .nullable()
+    .default(null),
+  couldHelpWith: z.array(z.string()).nullable().default(null),
+  notes: optionalText,
+  taskStatus: z
+    .enum(["Not Started", "In Progress", "Done", "Cancelled"])
+    .nullable()
+    .default(null),
+  assignedToName: optionalText,
+  resourceType: z.enum(["Paper", "Repo", "Other"]).nullable().default(null),
+  link: z.string().url().nullable().default(null),
+  description: optionalText,
+  outcome: optionalText,
+  date: optionalText,
+  nextSteps: z.array(z.string()).nullable().default(null),
+  questions: z.array(z.string()).nullable().default(null),
+});
+
 export const uncertaintySchema = z.object({
   field: z.string().min(1),
   itemType: z.string().min(1),
@@ -67,6 +99,27 @@ export const uncertaintySchema = z.object({
 });
 
 export const projectUpdateSchema = z.object({
+  intent: z.enum(["CREATE", "UPDATE", "DELETE", "UNKNOWN"]).default("CREATE"),
+  entityType: entityTypeSchema.default("UNKNOWN"),
+  entityId: optionalText,
+  searchText: optionalText,
+  changes: recordChangesSchema.default({
+    name: null,
+    title: null,
+    contactDetails: null,
+    contactStatus: null,
+    couldHelpWith: null,
+    notes: null,
+    taskStatus: null,
+    assignedToName: null,
+    resourceType: null,
+    link: null,
+    description: null,
+    outcome: null,
+    date: null,
+    nextSteps: null,
+    questions: null,
+  }),
   submissionSummary: z.string().min(1),
   contacts: z.array(contactUpdateSchema).default([]),
   resources: z.array(resourceUpdateSchema).default([]),
@@ -82,3 +135,5 @@ export type ContactUpdate = z.infer<typeof contactUpdateSchema>;
 export type ResourceUpdate = z.infer<typeof resourceUpdateSchema>;
 export type TaskUpdate = z.infer<typeof taskUpdateSchema>;
 export type ProjectLogEntryInput = z.infer<typeof projectLogEntrySchema>;
+export type EntityType = z.infer<typeof entityTypeSchema>;
+export type RecordChanges = z.infer<typeof recordChangesSchema>;

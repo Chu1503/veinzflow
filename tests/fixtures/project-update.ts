@@ -5,7 +5,6 @@ export const validProjectUpdate = {
       name: "Dr. Patel",
       contactDetails: null,
       contactStatus: "Contacted",
-      expertise: ["Ultrasound"],
       couldHelpWith: ["Equipment"],
       notes:
         "Professor at Central Lab. Discussed ultrasound equipment and requested an equipment list.",

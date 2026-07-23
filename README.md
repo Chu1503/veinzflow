@@ -59,7 +59,7 @@ Open `http://localhost:3000`. `/api/health` reports only safe configuration bool
 
 The safely repeatable script creates four data sources: Contacts, Resources, Tasks, and Project Log. It prints four IDs. Copy them into the matching `NOTION_*_DATABASE_ID` variables in `.env.local`; despite the legacy variable names, these values are Notion data-source IDs under the current API.
 
-Contacts intentionally has only `Name`, `Contact Details`, `Contact Status`, `Could Help With`, `Expertise`, and `Notes`. `Contact Details` can contain multiple newline-separated emails, phone numbers, profiles, websites, or other ways to make contact. Status is blank or one of `Need to Contact`, `Contacted`, and `Waiting for Response`. Organization, role, meeting context, and miscellaneous useful facts belong in `Notes`.
+Contacts intentionally has only `Name`, `Contact Details`, `Contact Status`, `Could Help With`, and `Notes`. `Contact Details` can contain multiple newline-separated emails, phone numbers, profiles, websites, or other ways to make contact. Status is blank or one of `Need to Contact`, `Contacted`, and `Waiting for Response`. Expertise, organization, role, meeting context, and miscellaneous useful facts belong in `Could Help With` or `Notes`. Running `npm run setup:notion` merges the retired `Expertise` values into `Could Help With`, normalizes legacy statuses, and then removes the `Expertise` property.
 
 ### Contacts migration
 
@@ -87,7 +87,13 @@ Notion’s API cannot create every preferred linked-database view. In the Notion
 
 5. Set `APP_URL` to the public HTTPS origin and run `npm run telegram:webhook:set`.
 
-### Telegram operations
+### Natural create, edit, and delete
+
+Telegram text and voice submissions use the same validated pipeline. Natural phrases such as `delete last task`, `Sandra's email is ...`, `change Kevin's status to Waiting for Response`, and `erase today's project log` are classified as CREATE, UPDATE, DELETE, or UNKNOWN. Updates mutate the matched Notion page and deletes archive it; they never create a replacement record.
+
+Matching ignores case, punctuation, repeated whitespace, and simple plural forms. Exact titles win, then fuzzy title matches, then explicit recent references such as last/latest/previous use Notion creation timestamps. A unique match is changed immediately, no match returns a not-found reply, and equally good matches produce a numbered clarification list. Meetings are not currently a VeinzFlow data source, so meeting edits and deletes return no match instead of creating a new schema.
+
+## Telegram operations
 
 All Telegram administration commands load `.env.local`, work in PowerShell and POSIX shells, and avoid printing tokens or webhook secrets.
 
