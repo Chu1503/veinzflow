@@ -1,42 +1,32 @@
-import Anthropic from "@anthropic-ai/sdk";
 import {
   projectUpdateSchema,
   type ProjectUpdate,
 } from "@/schemas/project-update";
 import type { ExtractionInput, ExtractionProvider } from "../contracts";
 import { extractionPrompt } from "../prompts/extract-project-update";
+import {
+  createAnthropicClient,
+  generateAnthropicStructured,
+  type AnthropicMessageClient,
+} from "../anthropic";
 
-type AnthropicTextClient = {
-  create(
-    input: object,
-  ): Promise<{ content: Array<{ type: string; text?: string }> }>;
-};
 export class AnthropicExtractionProvider implements ExtractionProvider {
-  private readonly client: AnthropicTextClient;
+  private readonly client: AnthropicMessageClient;
   constructor(
     private readonly model: string,
     apiKey?: string,
-    client?: AnthropicTextClient,
+    client?: AnthropicMessageClient,
   ) {
-    this.client =
-      client ??
-      (new Anthropic({ apiKey }).messages as unknown as AnthropicTextClient);
+    this.client = client ?? createAnthropicClient(apiKey);
   }
-  async extract(input: ExtractionInput): Promise<ProjectUpdate> {
-    const response = await this.client.create({
+  extract(input: ExtractionInput): Promise<ProjectUpdate> {
+    return generateAnthropicStructured({
+      client: this.client,
       model: this.model,
-      max_tokens: 5000,
-      messages: [
-        {
-          role: "user",
-          content: `${extractionPrompt(input)}\nJSON Schema: ${JSON.stringify(projectUpdateSchema.toJSONSchema())}`,
-        },
-      ],
+      prompt: extractionPrompt(input),
+      schema: projectUpdateSchema,
+      maxTokens: 4_000,
+      operation: "extraction",
     });
-    const text = response.content.find((block) => block.type === "text")?.text;
-    if (!text) throw new Error("Anthropic returned no text");
-    return projectUpdateSchema.parse(
-      JSON.parse(text.replace(/^```json\s*|\s*```$/g, "")),
-    );
   }
 }

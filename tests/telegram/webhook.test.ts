@@ -148,6 +148,31 @@ describe("Telegram webhook", () => {
     );
   });
 
+  it("handles an Anthropic 429 once and returns HTTP 200", async () => {
+    process.env.EXTRACTION_PROVIDER = "anthropic";
+    mocks.processSubmission.mockImplementationOnce(async (input) => {
+      input.onStage?.("extraction");
+      throw new AppError(
+        "anthropic_rate_limited",
+        "Anthropic rate limit exceeded",
+        429,
+        false,
+      );
+    });
+    const update = textUpdate(32);
+    const response = await POST(requestFor(update));
+    const duplicate = await POST(requestFor(update));
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      ok: true,
+      errorHandled: true,
+      rateLimited: true,
+    });
+    expect(duplicate.status).toBe(200);
+    expect(mocks.processSubmission).toHaveBeenCalledOnce();
+    expect(mocks.sendMessage).toHaveBeenCalledOnce();
+  });
+
   it("acknowledges an unauthorized user without asking Telegram to retry", async () => {
     const response = await POST(requestFor(textUpdate(30, 999)));
     expect(response.status).toBe(200);

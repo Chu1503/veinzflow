@@ -198,10 +198,8 @@ export async function POST(request: Request) {
     });
     return Response.json({ ok: true, processed: true }, { status: 200 });
   } catch (error) {
-    const geminiRateLimited =
-      stage === "extraction" &&
-      env.EXTRACTION_PROVIDER === "gemini" &&
-      isUpstreamRateLimitError(error);
+    const providerRateLimited =
+      stage === "extraction" && isUpstreamRateLimitError(error);
     logger.error("Telegram submission failed", {
       updateId,
       messageId: submission.messageId,
@@ -213,7 +211,7 @@ export async function POST(request: Request) {
       try {
         await telegram.sendMessage(
           submission.chatId,
-          geminiRateLimited ? providerRateLimitReply() : errorReply(),
+          providerRateLimited ? providerRateLimitReply() : errorReply(),
         );
       } catch (replyError) {
         logger.error("Telegram error reply failed", {
@@ -225,6 +223,6 @@ export async function POST(request: Request) {
         });
       }
     markTelegramUpdateHandled(updateId);
-    return handled(geminiRateLimited ? { rateLimited: true } : {});
+    return handled(providerRateLimited ? { rateLimited: true } : {});
   }
 }

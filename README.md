@@ -85,7 +85,37 @@ Notion’s API cannot create every preferred linked-database view. In the Notion
    ALLOWED_TELEGRAM_CHAT_IDS=123456789,-1001234567890
    ```
 
-5. Set `APP_URL` to the public HTTPS URL and run `npm run telegram:register`. Remove the webhook with `npm run telegram:delete-webhook`.
+5. Set `APP_URL` to the public HTTPS origin and run `npm run telegram:webhook:set`.
+
+### Telegram operations
+
+All Telegram administration commands load `.env.local`, work in PowerShell and POSIX shells, and avoid printing tokens or webhook secrets.
+
+| Command                                       | Purpose                                                                       |
+| --------------------------------------------- | ----------------------------------------------------------------------------- |
+| `npm run telegram:webhook:set`                | Register `${APP_URL}/api/telegram/webhook`; preserve pending updates.         |
+| `npm run telegram:webhook:status`             | Show Telegram's active URL, pending count, recent error, and allowed updates. |
+| `npm run telegram:webhook:delete`             | Delete the webhook while preserving pending updates.                          |
+| `npm run telegram:webhook:reset`              | Safely delete, re-register, and verify the webhook.                           |
+| `npm run telegram:webhook:flush -- --confirm` | **Destructive:** delete the webhook and discard pending updates.              |
+| `npm run telegram:test`                       | Verify the configured bot with `getMe`.                                       |
+| `npm run telegram:doctor`                     | Run read-only bot, webhook, URL, and application-health diagnostics.          |
+
+If `APP_URL` is not stored locally, pass it without changing the environment:
+
+```bash
+npm run telegram:webhook:set -- --url https://veinzflow.vercel.app
+```
+
+To send an optional test message, supply both arguments:
+
+```bash
+npm run telegram:test -- --chat-id 123456789 --message "VeinzFlow Telegram test"
+```
+
+Normal deletion preserves queued updates. `telegram:webhook:delete -- --drop-pending` is available only as an explicit compatibility operation; prefer the clearly destructive `telegram:webhook:flush -- --confirm` command when discarding pending updates is intentional. Nothing deletes or changes the webhook during application startup, and there is no public webhook-administration HTTP endpoint.
+
+The optional **Telegram Webhook Admin** GitHub Actions workflow exposes only `status`, `set`, and `reset`. Configure repository secrets `TELEGRAM_BOT_TOKEN` and `TELEGRAM_WEBHOOK_SECRET`, plus repository variable `APP_URL`; destructive flush is intentionally unavailable in Actions.
 
 `notionUserId` remains an optional compatibility fallback. VeinzFlow normally lists workspace users when the Notion client first starts, matches each configured member by email first and display name second, and caches the mapping in memory for 24 hours. Email addresses can also be used directly in task submissions. Unmatched members produce a warning without stopping the app. To refresh immediately, send authenticated `POST /api/admin/refresh-notion-users` with `Authorization: Bearer $ADMIN_SECRET`; the response contains counts only, never emails or IDs.
 
@@ -145,7 +175,11 @@ Anthropic remains available for extraction and digests. Create a key in the Anth
 ```env
 EXTRACTION_PROVIDER=anthropic
 DIGEST_PROVIDER=anthropic
+ANTHROPIC_EXTRACTION_MODEL=claude-3-5-haiku-latest
+ANTHROPIC_DIGEST_MODEL=claude-3-5-haiku-latest
 ```
+
+The Anthropic adapters use the official `@anthropic-ai/sdk`, validate every response with the same provider-independent Zod schemas, log token counts without content or secrets, and classify invalid keys, insufficient credits, and rate limits safely. When both extraction and digest use Anthropic, `GEMINI_API_KEY` may be removed or left unset; Gemini support remains available for switching back later.
 
 Only selected providers require keys. Switching providers does not alter Telegram, Notion, authorization, schemas, deduplication, or orchestration.
 

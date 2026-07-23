@@ -1,0 +1,47 @@
+name: Telegram Webhook Admin
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Safe Telegram webhook operation
+        required: true
+        default: status
+        type: choice
+        options:
+          - status
+          - set
+          - reset
+
+permissions:
+  contents: read
+
+jobs:
+  telegram-webhook-admin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_WEBHOOK_SECRET: ${{ secrets.TELEGRAM_WEBHOOK_SECRET }}
+      APP_URL: ${{ vars.APP_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Mask Telegram credentials
+        shell: bash
+        run: |
+          echo "::add-mask::$TELEGRAM_BOT_TOKEN"
+          echo "::add-mask::$TELEGRAM_WEBHOOK_SECRET"
+      - run: npm ci
+      - name: Show webhook status
+        if: inputs.action == 'status'
+        run: npm run telegram:webhook:status
+      - name: Set webhook
+        if: inputs.action == 'set'
+        run: npm run telegram:webhook:set
+      - name: Reset webhook
+        if: inputs.action == 'reset'
+        run: npm run telegram:webhook:reset

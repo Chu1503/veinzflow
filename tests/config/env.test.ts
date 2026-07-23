@@ -77,4 +77,21 @@ describe("environment validation", () => {
       ),
     ).toThrow("GEMINI_API_KEY");
   });
+
+  it("accepts Anthropic without a Gemini key when Anthropic is selected", () => {
+    const env = parseEnv(
+      {
+        ...strictBase,
+        TRANSCRIPTION_PROVIDER: "groq",
+        EXTRACTION_PROVIDER: "anthropic",
+        DIGEST_PROVIDER: "anthropic",
+        GROQ_API_KEY: "test-key",
+        ANTHROPIC_API_KEY: "test-key",
+      },
+      true,
+    );
+    expect(env.EXTRACTION_PROVIDER).toBe("anthropic");
+    expect(env.DIGEST_PROVIDER).toBe("anthropic");
+    expect(env.GEMINI_API_KEY).toBeUndefined();
+  });
 });

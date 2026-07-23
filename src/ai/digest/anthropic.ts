@@ -1,4 +1,3 @@
-import Anthropic from "@anthropic-ai/sdk";
 import type { DigestProvider } from "../contracts";
 import {
   projectDigestSchema,
@@ -6,31 +5,29 @@ import {
   type ProjectDigest,
 } from "@/schemas/digest";
 import { digestPrompt } from "../prompts/create-digest";
-type Client = {
-  create(
-    input: object,
-  ): Promise<{ content: Array<{ type: string; text?: string }> }>;
-};
+import {
+  createAnthropicClient,
+  generateAnthropicStructured,
+  type AnthropicMessageClient,
+} from "../anthropic";
+
 export class AnthropicDigestProvider implements DigestProvider {
-  private readonly client: Client;
+  private readonly client: AnthropicMessageClient;
   constructor(
     private readonly model: string,
     apiKey?: string,
-    client?: Client,
+    client?: AnthropicMessageClient,
   ) {
-    this.client =
-      client ?? (new Anthropic({ apiKey }).messages as unknown as Client);
+    this.client = client ?? createAnthropicClient(apiKey);
   }
-  async generateDigest(input: DigestInput): Promise<ProjectDigest> {
-    const response = await this.client.create({
+  generateDigest(input: DigestInput): Promise<ProjectDigest> {
+    return generateAnthropicStructured({
+      client: this.client,
       model: this.model,
-      max_tokens: 3000,
-      messages: [{ role: "user", content: digestPrompt(input) }],
+      prompt: digestPrompt(input),
+      schema: projectDigestSchema,
+      maxTokens: 2_000,
+      operation: "digest",
     });
-    const text = response.content.find((block) => block.type === "text")?.text;
-    if (!text) throw new Error("Anthropic returned no digest");
-    return projectDigestSchema.parse(
-      JSON.parse(text.replace(/^```json\s*|\s*```$/g, "")),
-    );
   }
 }
