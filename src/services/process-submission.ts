@@ -16,10 +16,12 @@ export async function processSubmission(input: {
   env: AppEnv;
   notion: Client;
   telegram: TelegramClient;
+  onStage?: (stage: string) => void;
 }): Promise<{ reply: string; partial: boolean }> {
-  const { submission, member, env, notion, telegram } = input;
+  const { submission, member, env, notion, telegram, onStage } = input;
   let text = submission.text ?? "";
   if (submission.file) {
+    onStage?.("transcription");
     if ((submission.file.duration ?? 0) > env.MAX_AUDIO_DURATION_SECONDS)
       throw new Error("Audio duration exceeds the configured limit");
     if ((submission.file.file_size ?? 0) > env.MAX_AUDIO_BYTES)
@@ -39,10 +41,12 @@ export async function processSubmission(input: {
     });
     text = [transcript.text, text].filter(Boolean).join("\n");
   }
+  onStage?.("validation");
   if (!text)
     throw new Error("The submission contains no supported text or audio");
   if (text.length > env.MAX_TEXT_LENGTH)
     throw new Error("Submission text exceeds the configured limit");
+  onStage?.("extraction");
   const provider = createExtractionProvider(env);
   const update = await retry(
     () =>
@@ -61,6 +65,7 @@ export async function processSubmission(input: {
   );
   const clarification = clarificationMessage(update);
   if (clarification) return { reply: clarification, partial: false };
+  onStage?.("notion_write");
   const results = await applyProjectUpdate(notion, env, update);
   const { successReply } = await import("@/telegram/replies");
   return {

@@ -19,6 +19,7 @@ export const contactUpdateSchema = z.object({
       "Infer from intent/contact history; use null when no status is stated",
     ),
   expertise: z.array(z.string()).default([]),
+  couldHelpWith: z.array(z.string()).default([]),
   notes: optionalText.describe(
     "Catch-all for organization, role, meeting context, impressions, collaboration interest, and other useful contact facts",
   ),

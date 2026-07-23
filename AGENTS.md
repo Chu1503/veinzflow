@@ -11,7 +11,7 @@ Provider selection belongs only in `src/ai/*/index.ts` and `src/email/index.ts`.
 - Never bypass Zod validation or weaken it to accommodate malformed model output.
 - Never let AI output write directly to Notion. Flow must remain AI → schema → business rules/deduplication → deterministic mapping → API.
 - Never invent assignment, identity, dates, decisions, outcomes, or technical claims. Prefer leaving fields empty; ask only when ambiguity would materially change stored data.
-- Keep Contacts limited to Name, Contact Details, Contact Status, Expertise, and Notes. Put organization, role, ways the contact could help, context, and miscellaneous contact facts in Notes. Do not reintroduce CRM metadata or an operational state database.
+- Keep Contacts limited to Name, Contact Details, Contact Status, Could Help With, Expertise, and Notes. Put organization, role, context, and miscellaneous contact facts in Notes. Do not reintroduce CRM metadata or an operational state database.
 - Keep Resources limited to Title, Resource Type, Link, Description, and Notes; Tasks to Task, Assigned To, and Status; and Project Log to Title, Outcome, Date, Next Steps, and Questions. Extra task context belongs in the page body, and participant context belongs in Project Log Outcome.
 - Never commit secrets, `.env.local`, raw audio, private project content, or exported Notion data.
 - Never log full tokens or sensitive message contents. Preserve the redaction boundary.

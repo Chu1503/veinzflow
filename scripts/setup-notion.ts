@@ -69,6 +69,7 @@ async function main(): Promise<void> {
           "Waiting for Response",
         ]),
         Expertise: multi,
+        "Could Help With": multi,
         Notes: rich,
       },
     },
@@ -160,69 +161,17 @@ async function main(): Promise<void> {
         "Contacted",
         "Waiting for Response",
       ]),
+      "Could Help With": multi,
       Expertise: multi,
       Notes: rich,
     },
   });
 
-  let contactCursor: string | undefined;
-  do {
-    const pages = await notion.dataSources.query({
-      data_source_id: contactsId,
-      page_size: 100,
-      ...(contactCursor ? { start_cursor: contactCursor } : {}),
-    });
-    for (const page of pages.results.filter(isFullPage)) {
-      const currentDetails = propertyText(page.properties["Contact Details"]);
-      const contactDetails = [
-        currentDetails,
-        propertyText(page.properties.Email),
-        propertyText(page.properties.Phone),
-        propertyText(page.properties.Website),
-      ].filter((value, index, values): value is string =>
-        Boolean(value && values.indexOf(value) === index),
-      );
-      const currentNotes = propertyText(page.properties.Notes);
-      const legacyNotes = [
-        ["Organization", propertyText(page.properties.Organization)],
-        ["Role", propertyText(page.properties.Role)],
-        ["Could help with", propertyText(page.properties["Could Help With"])],
-        ["Why relevant", propertyText(page.properties["Why Relevant"])],
-        [
-          "What we discussed",
-          propertyText(page.properties["What We Discussed"]),
-        ],
-        ["Outcome", propertyText(page.properties.Outcome)],
-        ["Next step", propertyText(page.properties["Next Step"])],
-      ]
-        .filter((entry): entry is [string, string] => Boolean(entry[1]))
-        .map(([label, value]) => `${label}: ${value}`);
-      const notes = [currentNotes, ...legacyNotes].filter(Boolean).join("\n");
-      if (
-        contactDetails.join("\n") !== (currentDetails ?? "") ||
-        notes !== (currentNotes ?? "")
-      )
-        await notion.pages.update({
-          page_id: page.id,
-          properties: {
-            "Contact Details": {
-              rich_text: richTextContent(contactDetails.join("\n")),
-            },
-            Notes: {
-              rich_text: richTextContent(notes),
-            },
-          },
-        });
-    }
-    contactCursor = pages.has_more
-      ? (pages.next_cursor ?? undefined)
-      : undefined;
-  } while (contactCursor);
-
   const allowedContactProperties = new Set([
     "Name",
     "Contact Details",
     "Contact Status",
+    "Could Help With",
     "Expertise",
     "Notes",
   ]);

@@ -59,11 +59,11 @@ Open `http://localhost:3000`. `/api/health` reports only safe configuration bool
 
 The safely repeatable script creates four data sources: Contacts, Resources, Tasks, and Project Log. It prints four IDs. Copy them into the matching `NOTION_*_DATABASE_ID` variables in `.env.local`; despite the legacy variable names, these values are Notion data-source IDs under the current API.
 
-Contacts intentionally has only `Name`, `Contact Details`, `Contact Status`, `Expertise`, and `Notes`. `Contact Details` can contain multiple newline-separated emails, phone numbers, profiles, websites, or other ways to make contact. Status is blank or one of `Need to Contact`, `Contacted`, and `Waiting for Response`. Organization, role, ways the contact could help, meeting context, and miscellaneous useful facts belong in `Notes`.
+Contacts intentionally has only `Name`, `Contact Details`, `Contact Status`, `Could Help With`, `Expertise`, and `Notes`. `Contact Details` can contain multiple newline-separated emails, phone numbers, profiles, websites, or other ways to make contact. Status is blank or one of `Need to Contact`, `Contacted`, and `Waiting for Response`. Organization, role, meeting context, and miscellaneous useful facts belong in `Notes`.
 
 ### Contacts migration
 
-Before upgrading an existing workspace, export or duplicate the Contacts data source as a backup. Rerunning `npm run setup:notion` adds the streamlined properties; consolidates legacy Email, Phone, and Website values into `Contact Details`; moves Organization, Role, Why Relevant, What We Discussed, Outcome, and Next Step text into `Notes`; removes every other Contacts property; and moves the obsolete internal state data source to Notion trash. Review unusual relation/date metadata before migration if it must be retained. The runtime no longer reads the removed state data source or its environment variable.
+Before upgrading an existing workspace, export or duplicate the Contacts data source as a backup. Rerunning `npm run setup:notion` adds the streamlined properties, removes every other Contacts property, and moves the obsolete internal state data source to Notion trash. Copy any legacy contact data that must be retained into `Contact Details` or `Notes` before running the migration; deleted properties are no longer read by the application. The runtime no longer reads the removed state data source or its environment variable.
 
 Resources contains only `Title`, `Resource Type`, `Link`, `Description`, and `Notes`. Resource Type is `Paper`, `Repo`, or `Other`; legacy authorship, publication, citation, findings, and relevance text is consolidated into Notes.
 
@@ -90,6 +90,12 @@ Notion’s API cannot create every preferred linked-database view. In the Notion
 `notionUserId` remains an optional compatibility fallback. VeinzFlow normally lists workspace users when the Notion client first starts, matches each configured member by email first and display name second, and caches the mapping in memory for 24 hours. Email addresses can also be used directly in task submissions. Unmatched members produce a warning without stopping the app. To refresh immediately, send authenticated `POST /api/admin/refresh-notion-users` with `Authorization: Bearer $ADMIN_SECRET`; the response contains counts only, never emails or IDs.
 
 Telegram’s official [Bot API documentation](https://core.telegram.org/bots/api#setwebhook) describes webhook registration and secret tokens.
+
+### Webhook acknowledgements and idempotency
+
+Once a valid Telegram `update_id` has been identified, VeinzFlow returns HTTP 200 for successful processing and for deliberately handled terminal failures. This prevents Telegram from repeatedly delivering an update after extraction, transcription, authorization, validation, reply, or Notion failures. Invalid webhook secrets remain HTTP 401, and malformed JSON that cannot identify an update remains HTTP 400.
+
+Each running app instance keeps a bounded 24-hour in-memory ledger of attempted and handled `update_id` values. It suppresses concurrent and repeated deliveries to the same warm instance before any Notion write or Telegram reply. Because VeinzFlow intentionally has no production database or queue, this ledger does not survive a cold start and is not shared across simultaneous Vercel instances. Deterministic Notion deduplication remains the secondary cross-instance safeguard: contacts use details/name, resources use link/title, tasks use title, and project-log entries use title plus date. Strong durable exactly-once delivery would require adding persistent infrastructure.
 
 ## AI providers
 
