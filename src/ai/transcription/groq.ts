@@ -5,7 +5,9 @@ import type {
   TranscriptionProvider,
 } from "../contracts";
 import { AppError } from "@/lib/errors";
+import { logger } from "@/lib/logger";
 import { retry, withTimeout } from "@/lib/retry";
+import { normalizeAudioFileMetadata } from "@/lib/audio-file";
 
 export type GroqTranscriptionClient = {
   create(input: {
@@ -38,11 +40,21 @@ export class GroqTranscriptionProvider implements TranscriptionProvider {
 
   async transcribe(input: TranscriptionInput): Promise<Transcript> {
     try {
+      const metadata = normalizeAudioFileMetadata({
+        filename: input.filename,
+        mimeType: input.mimeType,
+      });
+      logger.info("Audio upload metadata normalized", {
+        originalExtension: metadata.originalExtension,
+        normalizedExtension: metadata.normalizedExtension,
+        mimeType: metadata.mimeType,
+        byteSize: input.data.byteLength,
+      });
       return await retry(async () => {
         const bytes = new Uint8Array(input.data.byteLength);
         bytes.set(input.data);
-        const file = new File([bytes.buffer], input.filename, {
-          type: input.mimeType,
+        const file = new File([bytes.buffer], metadata.filename, {
+          type: metadata.mimeType,
         });
         const result = await withTimeout(
           this.client.create({

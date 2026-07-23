@@ -1,5 +1,6 @@
 export type TelegramFile = {
   file_id: string;
+  file_unique_id?: string;
   file_size?: number;
   duration?: number;
   mime_type?: string;
@@ -28,6 +29,6 @@ export type NormalizedSubmission = {
   userId: string;
   userLabel: string;
   text: string | null;
-  file: (TelegramFile & { kind: "voice" | "audio" }) | null;
+  file: (TelegramFile & { kind: "voice" | "audio" | "document" }) | null;
   documentMetadata: string | null;
 };

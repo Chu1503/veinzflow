@@ -4,6 +4,7 @@ import type {
   TranscriptionInput,
   TranscriptionProvider,
 } from "../contracts";
+import { normalizeAudioFileMetadata } from "@/lib/audio-file";
 
 export class OpenAITranscriptionProvider implements TranscriptionProvider {
   private readonly client: OpenAI;
@@ -15,10 +16,14 @@ export class OpenAITranscriptionProvider implements TranscriptionProvider {
     this.client = client ?? new OpenAI({ apiKey });
   }
   async transcribe(input: TranscriptionInput): Promise<Transcript> {
+    const metadata = normalizeAudioFileMetadata({
+      filename: input.filename,
+      mimeType: input.mimeType,
+    });
     const bytes = new Uint8Array(input.data.byteLength);
     bytes.set(input.data);
-    const file = new File([bytes.buffer], input.filename, {
-      type: input.mimeType,
+    const file = new File([bytes.buffer], metadata.filename, {
+      type: metadata.mimeType,
     });
     const result = await this.client.audio.transcriptions.create({
       file,

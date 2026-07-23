@@ -121,6 +121,8 @@ The optional **Telegram Webhook Admin** GitHub Actions workflow exposes only `st
 
 Telegram’s official [Bot API documentation](https://core.telegram.org/bots/api#setwebhook) describes webhook registration and secret tokens.
 
+Telegram OGG/Opus voice bytes are sent directly to transcription without transcoding. VeinzFlow gives voice uploads a safe `.ogg` filename (including Telegram paths ending in `.oga`) and validates regular audio extensions before contacting the provider.
+
 ### Webhook acknowledgements and idempotency
 
 Once a valid Telegram `update_id` has been identified, VeinzFlow returns HTTP 200 for successful processing and for deliberately handled terminal failures. This prevents Telegram from repeatedly delivering an update after extraction, transcription, authorization, validation, reply, or Notion failures. Invalid webhook secrets remain HTTP 401, and malformed JSON that cannot identify an update remains HTTP 400.

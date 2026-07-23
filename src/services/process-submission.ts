@@ -5,6 +5,7 @@ import { createTranscriptionProvider } from "@/ai/transcription";
 import type { NormalizedSubmission } from "@/telegram/types";
 import { downloadTelegramFile } from "@/telegram/files";
 import { TelegramClient } from "@/telegram/client";
+import { telegramAudioUploadMetadata } from "@/telegram/audio";
 import { dateInTimezone } from "@/lib/dates";
 import { retry } from "@/lib/retry";
 import { AppError, isUpstreamRateLimitError } from "@/lib/errors";
@@ -35,10 +36,11 @@ export async function processSubmission(input: {
       submission.file.file_id,
       env.MAX_AUDIO_BYTES,
     );
+    const upload = telegramAudioUploadMetadata(submission.file, file.filename);
     const transcript = await createTranscriptionProvider(env).transcribe({
       data: file.data,
-      filename: file.filename,
-      mimeType: submission.file.mime_type ?? "audio/ogg",
+      filename: upload.filename,
+      mimeType: upload.mimeType,
     });
     text = [transcript.text, text].filter(Boolean).join("\n");
   }

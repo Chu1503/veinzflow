@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { parseEnv } from "@/config/env";
 import { createTranscriptionProvider } from "@/ai/transcription";
 import {
@@ -7,6 +7,7 @@ import {
   type GroqTranscriptionClient,
 } from "@/ai/transcription/groq";
 import { OpenAITranscriptionProvider } from "@/ai/transcription/openai";
+import { normalizeAudioFileMetadata } from "@/lib/audio-file";
 
 const audio = {
   data: new Uint8Array([1, 2, 3]),
@@ -48,6 +49,73 @@ describe("Groq transcription", () => {
     });
     expect(received?.name).toBe("telegram-voice.ogg");
     expect(received?.type).toBe("audio/ogg");
+  });
+
+  it("uploads a Telegram .oga voice note as .ogg without changing bytes", async () => {
+    let received: File | undefined;
+    const client: GroqTranscriptionClient = {
+      create: async (input) => {
+        received = input.file;
+        return { text: "voice transcript" };
+      },
+    };
+    const provider = new GroqTranscriptionProvider(
+      "whisper-large-v3-turbo",
+      "test-key",
+      client,
+      1,
+    );
+    await provider.transcribe({
+      data: new Uint8Array([10, 20, 30]),
+      filename: "file_123.oga",
+      mimeType: "audio/ogg",
+    });
+    expect(received?.name).toBe("file_123.ogg");
+    expect(received?.type).toBe("audio/ogg");
+    expect(new Uint8Array(await received!.arrayBuffer())).toEqual(
+      new Uint8Array([10, 20, 30]),
+    );
+  });
+
+  it("gives extensionless audio/ogg a safe .ogg filename", () => {
+    expect(
+      normalizeAudioFileMetadata({ filename: "", mimeType: "audio/ogg" }),
+    ).toMatchObject({
+      filename: "telegram-audio.ogg",
+      mimeType: "audio/ogg",
+      normalizedExtension: ".ogg",
+    });
+  });
+
+  it.each(["recording.mp3", "recording.wav"])(
+    "preserves supported filename %s",
+    (filename) => {
+      expect(
+        normalizeAudioFileMetadata({
+          filename,
+          mimeType: filename.endsWith(".mp3") ? "audio/mpeg" : "audio/wav",
+        }).filename,
+      ).toBe(filename);
+    },
+  );
+
+  it("rejects unsupported files before calling Groq", async () => {
+    const client: GroqTranscriptionClient = { create: async () => ({}) };
+    const create = vi.spyOn(client, "create");
+    const provider = new GroqTranscriptionProvider(
+      "whisper-large-v3-turbo",
+      "test-key",
+      client,
+      1,
+    );
+    await expect(
+      provider.transcribe({
+        data: new Uint8Array([1]),
+        filename: "recording.aac",
+        mimeType: "audio/aac",
+      }),
+    ).rejects.toMatchObject({ code: "unsupported_audio_type", status: 415 });
+    expect(create).not.toHaveBeenCalled();
   });
 
   it("rejects an empty transcription", async () => {
