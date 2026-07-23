@@ -7,6 +7,7 @@ import { downloadTelegramFile } from "@/telegram/files";
 import { TelegramClient } from "@/telegram/client";
 import { dateInTimezone } from "@/lib/dates";
 import { retry } from "@/lib/retry";
+import { isUpstreamRateLimitError } from "@/lib/errors";
 import { clarificationMessage } from "./clarify";
 import { applyProjectUpdate } from "./apply-project-update";
 
@@ -62,6 +63,8 @@ export async function processSubmission(input: {
         ),
       }),
     env.MAX_AI_ATTEMPTS,
+    150,
+    (error) => !isUpstreamRateLimitError(error),
   );
   const clarification = clarificationMessage(update);
   if (clarification) return { reply: clarification, partial: false };

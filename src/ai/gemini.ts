@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import type { ZodType } from "zod";
-import { AppError } from "@/lib/errors";
+import { AppError, isUpstreamRateLimitError } from "@/lib/errors";
 import { retry, withTimeout } from "@/lib/retry";
 
 export type GeminiGenerateClient = {
@@ -46,31 +46,38 @@ export async function generateGeminiStructured<T>(input: {
   operation: string;
 }): Promise<T> {
   try {
-    return await retry(async () => {
-      const response = await withTimeout(
-        input.client.models.generateContent({
-          model: input.model,
-          contents: input.prompt,
-          config: {
-            responseMimeType: "application/json",
-            responseJsonSchema: providerSchema(input.schema),
-          },
-        }),
-        input.timeoutMs,
-        `Gemini ${input.operation} timed out`,
-      );
-      const text = response.text?.trim();
-      if (!text) throw new Error(`Gemini returned no ${input.operation} text`);
-      return input.schema.parse(parseJson(text));
-    }, input.attempts);
+    return await retry(
+      async () => {
+        const response = await withTimeout(
+          input.client.models.generateContent({
+            model: input.model,
+            contents: input.prompt,
+            config: {
+              responseMimeType: "application/json",
+              responseJsonSchema: providerSchema(input.schema),
+            },
+          }),
+          input.timeoutMs,
+          `Gemini ${input.operation} timed out`,
+        );
+        const text = response.text?.trim();
+        if (!text)
+          throw new Error(`Gemini returned no ${input.operation} text`);
+        return input.schema.parse(parseJson(text));
+      },
+      input.attempts,
+      150,
+      (error) => !isUpstreamRateLimitError(error),
+    );
   } catch (error) {
+    const rateLimited = isUpstreamRateLimitError(error);
     throw new AppError(
       `gemini_${input.operation}_failed`,
       error instanceof Error
         ? error.message
         : `Gemini ${input.operation} failed`,
-      502,
-      true,
+      rateLimited ? 429 : 502,
+      !rateLimited,
     );
   }
 }

@@ -97,6 +97,31 @@ describe("Gemini extraction", () => {
     expect(mock.calls()).toBe(2);
   });
 
+  it("does not retry an upstream 429", async () => {
+    let calls = 0;
+    const client: GeminiGenerateClient = {
+      models: {
+        generateContent: async () => {
+          calls += 1;
+          throw Object.assign(new Error("429 quota exceeded"), {
+            status: 429,
+          });
+        },
+      },
+    };
+    const provider = new GeminiExtractionProvider(
+      "gemini-3.5-flash",
+      "test-key",
+      client,
+      3,
+    );
+    await expect(provider.extract(input)).rejects.toMatchObject({
+      status: 429,
+      retryable: false,
+    });
+    expect(calls).toBe(1);
+  });
+
   it("preserves uncertainty and needsConfirmation", async () => {
     const ambiguous = {
       ...validProjectUpdate,

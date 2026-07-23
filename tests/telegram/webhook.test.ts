@@ -19,6 +19,7 @@ vi.mock("@/telegram/client", () => ({
 }));
 
 import { POST } from "@/app/api/telegram/webhook/route";
+import { AppError } from "@/lib/errors";
 import { resetTelegramUpdateLedger } from "@/telegram/update-idempotency";
 
 const textUpdate = (updateId: number, userId = 7) => ({
@@ -61,6 +62,7 @@ describe("Telegram webhook", () => {
     resetTelegramUpdateLedger();
     process.env.TELEGRAM_WEBHOOK_SECRET = "webhook-secret";
     process.env.TELEGRAM_BOT_TOKEN = "bot-test-token";
+    process.env.EXTRACTION_PROVIDER = "gemini";
     process.env.ALLOWED_TELEGRAM_CHAT_IDS = "55";
     process.env.TEAM_MEMBERS_JSON = JSON.stringify([
       {
@@ -116,6 +118,35 @@ describe("Telegram webhook", () => {
       );
     },
   );
+
+  it("handles a Gemini 429 once and returns HTTP 200", async () => {
+    mocks.processSubmission.mockImplementationOnce(async (input) => {
+      input.onStage?.("extraction");
+      throw new AppError(
+        "gemini_extraction_failed",
+        "upstream error code: 429",
+        429,
+        false,
+      );
+    });
+    const update = textUpdate(31);
+    const response = await POST(requestFor(update));
+    const duplicate = await POST(requestFor(update));
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      ok: true,
+      processed: false,
+      errorHandled: true,
+      rateLimited: true,
+    });
+    expect(duplicate.status).toBe(200);
+    expect(mocks.processSubmission).toHaveBeenCalledOnce();
+    expect(mocks.sendMessage).toHaveBeenCalledOnce();
+    expect(mocks.sendMessage).toHaveBeenCalledWith(
+      "55",
+      "VeinzFlow is temporarily rate-limited. Please try again in a few minutes.",
+    );
+  });
 
   it("acknowledges an unauthorized user without asking Telegram to retry", async () => {
     const response = await POST(requestFor(textUpdate(30, 999)));

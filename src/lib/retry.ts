@@ -2,6 +2,7 @@ export async function retry<T>(
   operation: () => Promise<T>,
   attempts = 2,
   delayMs = 150,
+  shouldRetry: (error: unknown) => boolean = () => true,
 ): Promise<T> {
   let last: unknown;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
@@ -9,10 +10,11 @@ export async function retry<T>(
       return await operation();
     } catch (error) {
       last = error;
-      if (attempt < attempts)
+      if (attempt < attempts && shouldRetry(error))
         await new Promise((resolve) =>
           setTimeout(resolve, delayMs * 2 ** (attempt - 1)),
         );
+      else throw error;
     }
   }
   throw last;

@@ -14,3 +14,6 @@ export function successReply(results: WriteResult[]): string {
 export function errorReply(): string {
   return "I could not finish saving that update. The error was logged safely; please try again or contact the project administrator.";
 }
+export function providerRateLimitReply(): string {
+  return "VeinzFlow is temporarily rate-limited. Please try again in a few minutes.";
+}

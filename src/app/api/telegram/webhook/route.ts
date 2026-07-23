@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { NextResponse } from "next/server";
 import { getEnv } from "@/config/env";
 import { secretsEqual, authorizeTelegram } from "@/security/authorization";
 import { checkRateLimit } from "@/security/rate-limit";
@@ -7,8 +8,9 @@ import type { TelegramUpdate } from "@/telegram/types";
 import { TelegramClient } from "@/telegram/client";
 import { getNotionClient } from "@/notion/client";
 import { processSubmission } from "@/services/process-submission";
-import { errorReply } from "@/telegram/replies";
+import { errorReply, providerRateLimitReply } from "@/telegram/replies";
 import { logger } from "@/lib/logger";
+import { isUpstreamRateLimitError } from "@/lib/errors";
 import {
   claimTelegramUpdate,
   markTelegramUpdateHandled,
@@ -24,7 +26,7 @@ const updateSchema = z
   .passthrough();
 
 const handled = (extra: Record<string, unknown> = {}) =>
-  Response.json(
+  NextResponse.json(
     { ok: true, processed: false, errorHandled: true, ...extra },
     { status: 200 },
   );
@@ -196,6 +198,10 @@ export async function POST(request: Request) {
     });
     return Response.json({ ok: true, processed: true }, { status: 200 });
   } catch (error) {
+    const geminiRateLimited =
+      stage === "extraction" &&
+      env.EXTRACTION_PROVIDER === "gemini" &&
+      isUpstreamRateLimitError(error);
     logger.error("Telegram submission failed", {
       updateId,
       messageId: submission.messageId,
@@ -205,7 +211,10 @@ export async function POST(request: Request) {
     });
     if (stage !== "success_reply")
       try {
-        await telegram.sendMessage(submission.chatId, errorReply());
+        await telegram.sendMessage(
+          submission.chatId,
+          geminiRateLimited ? providerRateLimitReply() : errorReply(),
+        );
       } catch (replyError) {
         logger.error("Telegram error reply failed", {
           updateId,
@@ -216,6 +225,6 @@ export async function POST(request: Request) {
         });
       }
     markTelegramUpdateHandled(updateId);
-    return handled();
+    return handled(geminiRateLimited ? { rateLimited: true } : {});
   }
 }

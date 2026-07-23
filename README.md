@@ -95,6 +95,8 @@ Telegram’s official [Bot API documentation](https://core.telegram.org/bots/api
 
 Once a valid Telegram `update_id` has been identified, VeinzFlow returns HTTP 200 for successful processing and for deliberately handled terminal failures. This prevents Telegram from repeatedly delivering an update after extraction, transcription, authorization, validation, reply, or Notion failures. Invalid webhook secrets remain HTTP 401, and malformed JSON that cannot identify an update remains HTTP 400.
 
+Gemini HTTP 429/quota failures are not retried inside a webhook request. VeinzFlow sends one concise temporary-rate-limit reply, marks the update handled, and returns HTTP 200 so Telegram does not redeliver it.
+
 Each running app instance keeps a bounded 24-hour in-memory ledger of attempted and handled `update_id` values. It suppresses concurrent and repeated deliveries to the same warm instance before any Notion write or Telegram reply. Because VeinzFlow intentionally has no production database or queue, this ledger does not survive a cold start and is not shared across simultaneous Vercel instances. Deterministic Notion deduplication remains the secondary cross-instance safeguard: contacts use details/name, resources use link/title, tasks use title, and project-log entries use title plus date. Strong durable exactly-once delivery would require adding persistent infrastructure.
 
 ## AI providers
